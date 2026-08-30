@@ -1,0 +1,16 @@
+# Ignore node_modules, environment files, build directories, and other common files that should not be tracked by Git.
+**/node_modules
+
+# Ignore environment variable files
+**/.env 
+**/*.env
+#ignore build and distribution directories
+**/dist/
+**/build/
+
+# Ignore log files
+*.log
+
+# Ignore OS-specific files and IDE configurations
+.DS_Store
+.vscode/

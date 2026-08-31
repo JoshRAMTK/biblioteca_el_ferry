@@ -1,17 +1,8 @@
 @host = http://localhost:5000
-
-###
-POST {{host}}/api/usuarios/login
-Content-Type: application/json
-
-{
-    "correo": "juan@gmail.com",
-    "password": "123456"
-}
-
-
 ###
 GET {{host}}/api/usuarios
+
+
 ###
 POST {{host}}/api/usuarios
 Content-Type: application/json
@@ -22,6 +13,8 @@ Content-Type: application/json
     "telefono": "3186788999",
     "password": "123456"
 }
+
+
 ###
 PUT {{host}}/api/usuarios/1
 Content-Type: application/json

@@ -1,65 +1,7 @@
-import jwt from "jsonwebtoken"
-import bcrypt from "bcryptjs"
+
 import pool from "../server/data_base.js"
+import {generarToken} from "../middleware/token.js"
 
-const getPasswordField = async () => {
-    const [columns] = await pool.query('SHOW COLUMNS FROM usuarios')
-    const fieldNames = columns.map((column) => column.Field)
-
-    if (fieldNames.includes("password_hash")) return "password_hash"
-    if (fieldNames.includes("password")) return "password"
-
-    return null
-}
-
-export const loginUsuario = async (req, res) => {
-    try {
-        const { correo, password } = req.body
-
-        const [rows] = await pool.query('SELECT * FROM usuarios WHERE correo = ?', [correo])
-        const usuario = rows[0]
-
-        if (!usuario) {
-            return res.status(401).json({ message: "Credenciales inválidas" })
-        }
-
-        const passwordField = await getPasswordField()
-        const storedPassword = passwordField ? usuario[passwordField] : null
-
-        if (!storedPassword) {
-            return res.status(500).json({ message: "No existe campo de contraseña en la base de datos" })
-        }
-
-        const passwordValida = await bcrypt.compare(password, storedPassword)
-
-        if (!passwordValida) {
-            return res.status(401).json({ message: "Credenciales inválidas" })
-        }
-
-        const token = jwt.sign(
-            {
-                id_usuario: usuario.id_usuario,
-                correo: usuario.correo,
-                nombre: usuario.nombre,
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || "1h" }
-        )
-
-        return res.status(200).json({
-            message: "Login exitoso",
-            token,
-            usuario: {
-                id_usuario: usuario.id_usuario,
-                nombre: usuario.nombre,
-                correo: usuario.correo,
-            }
-        })
-    } catch (error) {
-        console.log("Login error: ", error)
-        return res.status(500).json({ message: "Internal Server Error" })
-    }
-}
 
 //OBTENER  USUARIOS 
 export const getUsuarios = async (req,res) =>{
@@ -74,7 +16,9 @@ export const getUsuarios = async (req,res) =>{
         console.log("Users NOT founded: ", error)
         res.status(500).json({message: "Internal Server Error"})
     }
-}
+    
+
+    };
 
 
 //CREAR USUARIOS
@@ -82,26 +26,19 @@ export const postUsuarios = async (req,res) =>{
     try {
 
         const {nombre, correo, telefono, password} = req.body
+        const [result] = await pool.query('INSERT INTO usuarios (nombre, correo, telefono, password) VALUES (?, ?, ?, ?)', [nombre, correo, telefono, password])
 
-        if (!password) {
-            return res.status(400).json({ message: "La contraseña es obligatoria" })
-        }
+        const nuevoUsuario = {
+        id_usuario: result.insertId,
+        nombre,
+        correo,
+        telefono,
+        password
+    }
 
-        const passwordField = await getPasswordField()
-
-        if (!passwordField) {
-            return res.status(500).json({ message: "La tabla usuarios no tiene campo de contraseña" })
-        }
-
-        const passwordHash = await bcrypt.hash(password, 10)
-
-        const [result] = await pool.query(
-            `INSERT INTO usuarios (nombre, correo, telefono, ${passwordField}) VALUES (?,?,?,?)`,
-            [nombre, correo, telefono, passwordHash]
-        )
-
-        console.log("User created successfuly", result)
-        res.status(201).json({message: "User created "})
+    const token = generarToken(nuevoUsuario)
+    console.log("User created successfuly", result)
+        res.status(201).json({message: "User created ", token, user: nuevoUsuario})
         
     } catch (error) {
 

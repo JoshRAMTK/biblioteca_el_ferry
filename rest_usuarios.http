@@ -8,22 +8,23 @@ POST {{host}}/api/usuarios
 Content-Type: application/json
 
 {
-    "nombre" : "Juan Gomez Ibarra",   
-    "correo": "Juancho15@gmail.com",
-    "telefono": "3186788999",
-    "password": "123456"
+    "nombre" : "Maria Padilla Bedoya",   
+    "correo": "MariPadilla@gmail.com",
+    "telefono": "3165436341",
+    "password": "260608"
 }
 
 
 ###
-PUT {{host}}/api/usuarios/1
+PUT {{host}}/api/usuarios/8
 Content-Type: application/json
 
 {
-    "nombre" : "Juan Perez",
-    "correo": "JuanchoPerez@gmail.com",
-    "telefono": "3186788967"
+    "nombre" : "Juan Gomez Ibarra",
+    "correo": "JuanchitoIbarra@gmail.com",
+    "telefono": "3186778990",
+    "password": "310295"
 }
 
 ###
-DELETE {{host}}/api/usuarios/1
+DELETE {{host}}/api/usuarios/8

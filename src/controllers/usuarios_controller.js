@@ -1,6 +1,6 @@
 
 import pool from "../server/data_base.js"
-import {generarToken} from "../middleware/token.js"
+import {generarToken} from "../Security/Oauth/token.js"
 
 
 //OBTENER  USUARIOS 
@@ -52,8 +52,8 @@ export const postUsuarios = async (req,res) =>{
 export const putUsuario = async (req , res) => {
     try {
         const {id} = req.params
-        const {nombre, correo, telefono} = req.body
-        const [result] = await pool.query('UPDATE usuarios SET nombre=?, correo=?, telefono=? WHERE id_usuario=?', [nombre, correo, telefono, id])
+        const {nombre, correo, telefono, password} = req.body
+        const [result] = await pool.query('UPDATE usuarios SET nombre=?, correo=?, telefono=?, password=? WHERE id_usuario=?', [nombre, correo, telefono, password, id])
 
         if(result.affectedRows === 0){
 
@@ -78,9 +78,9 @@ export const putUsuario = async (req , res) => {
 export const deleteUsuario = async (req, res) => 
 {
     try {
-        const ID = req.params.id
+        const {id} = req.params
 
-        const [result] = await pool.query('DELETE FROM usuarios WHERE id_usuario=?', [ID])
+        const [result] = await pool.query('DELETE FROM usuarios WHERE id_usuario=?', [id])
 
         console.log("User DELETED successfully: ", result)
         res.status(200).json({message: "DELETED correctly"})

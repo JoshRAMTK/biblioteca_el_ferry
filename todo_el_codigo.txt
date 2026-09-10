@@ -1,0 +1,1137 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  agents/
+    biblioteca-api.agent.md
+frontend/
+  src/
+    components/
+      protectedRoute.js
+    dashboard.jsx
+    detalles.jsx
+    inicio.jsx
+    libros.jsx
+    login.jsx
+    prestamos.jsx
+  app.jsx
+  main.css
+  main.html
+src/
+  api/
+    client.js
+  controllers/
+    auth_controller.js
+    dashboard_controller.js
+    detalles_controller.js
+    libros_controller.js
+    prestamos_controller.js
+    usuarios_controller.js
+  routes/
+    auth.js
+    dashboard.js
+    detalles_prestamo.js
+    libros.js
+    prestamos.js
+    usuario.js
+  Security/
+    middlewares/
+      auth_middle.js
+  server/
+    data_base.js
+    server.js
+.gitignore
+package.json
+rest_detalles.http
+rest_libros.http
+rest_prestamos.http
+rest_usuarios.http
+vite.config.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="frontend/src/components/protectedRoute.js">
+import { Navigate, Outlet } from 'react-router-dom';
+
+export const ProtectedRoute = () => {
+  const token = localStorage.getItem('token');
+
+  // Si no hay token, lo mandamos al login de una
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Si hay token, carga las vistas hijas
+  return <Outlet />;
+};
+</file>
+
+<file path="frontend/src/detalles.jsx">
+
+</file>
+
+<file path="frontend/src/login.jsx">
+import { GoogleLogin } from '@react-oauth/google';
+
+export function Login() {
+  const handleSuccess = async (credentialResponse) => {
+    // credentialResponse.credential trae el idToken que nos dio Google
+    const res = await fetch('http://localhost:5000/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: credentialResponse.credential }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      // Guardas tu propio JWT en localStorage para futuras peticiones
+      localStorage.setItem('token', data.token);
+      console.log('Usuario autenticado:', data.user);
+    }
+  };
+
+  return (
+    <div>
+      <h2>Iniciar Sesión</h2>
+      <GoogleLogin 
+        onSuccess={handleSuccess} 
+        onError={() => console.log('Error en el login con Google')} 
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/app.jsx">
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Login } from './pages/Login';
+import { Libros } from './pages/Libros';
+import { Prestamos } from './pages/Prestamos';
+import { DetallesPrestamo } from './pages/DetallesPrestamo';
+import { ProtectedRoute } from './components/ProtectedRoute';
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <App />
+  </GoogleOAuthProvider>
+);
+
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Rutas Públicas */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Rutas Protegidas (Solo accesibles con JWT) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/libros" element={<Libros />} />
+          <Route path="/prestamos" element={<Prestamos />} />
+          <Route path="/detalles" element={<DetallesPrestamo />} />
+        </Route>
+
+        {/* Redirección por defecto */}
+        <Route path="*" element={<Navigate to="/libros" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+</file>
+
+<file path="src/api/client.js">
+
+</file>
+
+<file path="src/controllers/auth_controller.js">
+// controllers/authController.js
+import { OAuth2Client } from 'google-auth-library';
+import jwt from 'jsonwebtoken';
+import pool from '../db.js'; // Ajusta la ruta a tu conexión MySQL
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const googleAuth = async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    return res.status(400).json({ message: 'El idToken es requerido.' });
+  }
+
+  try {
+    // 1. Validar el token con Google
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    // 2. Buscar si el usuario ya existe por su correo
+    const [rows] = await pool.query('SELECT * FROM usuarios WHERE correo = ?', [email]);
+    let user = rows[0];
+
+    if (!user) {
+      // Si no existe, creamos el nuevo registro con tus campos exactos
+      const [result] = await pool.query(
+        'INSERT INTO usuarios (nombre, telefono, correo, google_id, avatar) VALUES (?, ?, ?, ?, ?)',
+        [name, '', email, googleId, picture] // Se envía '' en telefono porque no es NULLABLE en la BD
+      );
+
+      user = {
+        id_usuario: result.insertId,
+        nombre: name,
+        correo: email,
+        avatar: picture
+      };
+    }
+
+    // 3. Generar el JWT firmando con el id_usuario y correo
+    const token = jwt.sign(
+      { id: user.id_usuario, correo: user.correo },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({
+      message: 'Autenticación exitosa',
+      token,
+      user: {
+        id_usuario: user.id_usuario,
+        nombre: user.nombre,
+        correo: user.correo,
+        avatar: user.avatar || picture
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en autenticación OAuth2:', error);
+    res.status(401).json({ message: 'Token de Google no válido o expirado.' });
+  }
+};
+</file>
+
+<file path="src/controllers/dashboard_controller.js">
+
+</file>
+
+<file path="src/routes/auth.js">
+
+</file>
+
+<file path="src/routes/dashboard.js">
+
+</file>
+
+<file path="src/Security/middlewares/auth_middle.js">
+
+</file>
+
+<file path=".github/agents/biblioteca-api.agent.md">
+---
+description: "Use when developing, debugging, reviewing, or testing the Biblioteca El Ferry full-stack application, including React components, Vite, API integration, Express routes, controllers, middleware, MySQL/Mongoose data access, CRUD endpoints, loans, books, users, and loan details."
+name: "Biblioteca Full Stack"
+tools: [read, search, edit, execute]
+user-invocable: true
+argument-hint: "Describe the API endpoint, bug, or backend change to implement"
+---
+You are a full-stack specialist for the Biblioteca El Ferry application. Work directly in the existing React, Vite, Node.js, and Express project and keep changes focused on the requested behavior.
+
+## Constraints
+- Preserve the existing ES modules setup and project structure unless the task requires a structural change.
+- Follow the existing frontend conventions and keep React components, API calls, loading states, errors, and forms consistent with the current application.
+- Follow the repository's naming and response conventions where they are consistent; point out inconsistencies that affect correctness.
+- Do not change database schemas, credentials, or unrelated files without a concrete reason.
+- Do not claim an endpoint works without running the narrowest available validation.
+- Do not expose secrets, connection strings, or unnecessary database contents in the response.
+
+## Approach
+1. Inspect the relevant React component, API client or call site, route, controller, middleware, database adapter, and nearby tests before editing.
+2. State a concise hypothesis about the controlling code path and identify a focused check that could disconfirm it.
+3. Make the smallest implementation change that fixes the root cause and preserves the public API when practical.
+4. Run the narrowest relevant test, syntax check, or development command; if validation is unavailable, say so explicitly.
+5. Review the resulting diff for accidental scope expansion and summarize remaining risks or test gaps.
+
+## Output Format
+Respond in Spanish with:
+- Resultado: what changed or what was found.
+- Validacion: the command or check run and its outcome.
+- Riesgos: only relevant follow-up concerns or missing coverage.
+Include file links when referring to changed files.
+</file>
+
+<file path="frontend/src/dashboard.jsx">
+function dashboard() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>Bienvenido a la sección de dashboard.</p>
+    </div>
+  );
+}
+
+export default dashboard;
+</file>
+
+<file path="frontend/src/inicio.jsx">
+function inicio() {
+  return (
+    <div>
+      <h1>Inicio</h1>
+      <p>Bienvenido a la sección de inicio.</p>
+    </div>
+  );
+}
+
+export default inicio;
+</file>
+
+<file path="frontend/src/libros.jsx">
+function libros() {
+  return (
+    <div>
+      <h1>Libros</h1>
+      <p>Bienvenido a la sección de libros.</p>
+    </div>
+  );
+}
+
+export default libros;
+</file>
+
+<file path="frontend/src/prestamos.jsx">
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
+
+export function Prestamos() {
+  const [prestamos, setPrestamos] = useState([]);
+  const [nuevoPrestamo, setNuevoPrestamo] = useState({
+    id_usuario: '',
+    fecha_prestamo: '',
+    fecha_devolucion: '',
+  });
+
+  const cargarPrestamos = async () => {
+    try {
+      const res = await apiFetch('/prestamos');
+      const data = await res.json();
+      setPrestamos(data);
+    } catch (err) {
+      console.error('Error cargando préstamos:', err);
+    }
+  };
+
+  useEffect(() => {
+    cargarPrestamos();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await apiFetch('/prestamos', {
+        method: 'POST',
+        body: JSON.stringify(nuevoPrestamo),
+      });
+      if (res.ok) {
+        setNuevoPrestamo({ id_usuario: '', fecha_prestamo: '', fecha_devolucion: '' });
+        cargarPrestamos();
+      }
+    } catch (err) {
+      console.error('Error al registrar préstamo:', err);
+    }
+  };
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <h2>Préstamos Registrados</h2>
+
+      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
+        <input
+          type="number"
+          placeholder="ID Usuario"
+          value={nuevoPrestamo.id_usuario}
+          onChange={(e) => setNuevoPrestamo({ ...nuevoPrestamo, id_usuario: e.target.value })}
+          required
+        />
+        <input
+          type="date"
+          value={nuevoPrestamo.fecha_prestamo}
+          onChange={(e) => setNuevoPrestamo({ ...nuevoPrestamo, fecha_prestamo: e.target.value })}
+          required
+        />
+        <input
+          type="date"
+          value={nuevoPrestamo.fecha_devolucion}
+          onChange={(e) => setNuevoPrestamo({ ...nuevoPrestamo, fecha_devolucion: e.target.value })}
+          required
+        />
+        <button type="submit">Crear Préstamo</button>
+      </form>
+
+      <table border="1" cellPadding="8" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th>ID Préstamo</th>
+            <th>ID Usuario</th>
+            <th>Fecha Préstamo</th>
+            <th>Fecha Devolución</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {prestamos.map((p) => (
+            <tr key={p.id_prestamo || p.id}>
+              <td>{p.id_prestamo || p.id}</td>
+              <td>{p.id_usuario}</td>
+              <td>{p.fecha_prestamo}</td>
+              <td>{p.fecha_devolucion}</td>
+              <td>{p.estado || 'Activo'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+</file>
+
+<file path="frontend/main.css">
+
+</file>
+
+<file path="frontend/main.html">
+
+</file>
+
+<file path="src/controllers/detalles_controller.js">
+import pool from "../server/data_base.js"
+
+//OBTENER DETALLES
+export const getDetalles = async (req,res) =>{
+    try {
+
+        const [rows] = await pool.query('SELECT * FROM detalles')
+        console.log("Details founded successfully: ", rows)
+        res.status(200).json({message: "Success"})
+        
+    } catch (error) {
+
+        console.log("Details NOT founded: ", error)
+        res.status(200).json({message: "Internal Server Error"})
+    }
+}
+
+
+//CREAR DETALLES        
+export const postDetalles = async (req,res) =>{
+    try {
+
+        const {id_usuario, id_libro, descripcion} = req.body
+        const [result] = await pool.query('INSERT INTO detalles (id_usuario, id_libro, descripcion) VALUES (?,?,?)', [id_usuario, id_libro, descripcion])
+        console.log("Details created successfully", result)
+        res.status(201).json({message: "Details created successfully", id: result.insertId})
+        
+    } catch (error) {
+
+        console.log("Details NOT created: ", error)
+        res.status(500).json({Message: "Internal Server Error"})
+    } 
+}
+
+
+//ACTUALIZAR DETALLES
+export const putDetalles = async (req , res) => {
+    try {
+
+        const {id} = req.params.id
+        const {id_usuario, id_libro, descripcion} = req.body
+        const [result] = await pool.query('UPDATE detalles SET id_usuario=?, id_libro=?, descripcion=? WHERE id_detalle=?', [id_usuario, id_libro, descripcion, id])
+
+        if(result.affectedRows === 0){
+
+            return res.status(404).json({message: "User NOT founded with this ID"})
+
+        }
+
+        console.log("Details UPDATED succesfuly")
+        res.status(200).json({message: "Details UPDATED correctly"})
+
+
+    } catch (error) {
+
+        console.log("Details NOT UPDATED error: ", error)
+        res.status(500).json({message: "Internal Server Error", error})
+
+    }
+}
+
+
+//ELIMINAR DETALLES
+export const deleteDetalles = async (req, res) => 
+{
+    try {
+        const {id} = req.params
+
+        const [result] = await pool.query('DELETE FROM detalles WHERE id_detalle=?', [id])
+
+        console.log("Details DELETED successfully: ", result)
+        res.status(200).json({message: "Details DELETED correctly"})
+        
+    } catch (error) {
+
+        console.log("Details NOT DELETED error: ", error)
+        res.status(500).json({message: "Internal Server Error"})
+
+    }
+
+}
+</file>
+
+<file path="src/controllers/libros_controller.js">
+import pool from "../server/data_base.js"
+
+//OBTENER LIBROS
+export const getLibros = async (req,res) =>{
+    try {
+
+        const [rows] = await pool.query('SELECT * FROM libros')
+        console.log("Books founded successfully: ", rows)
+        res.status(200).json({message: "Success"})
+        
+    } catch (error) {
+
+        console.log("Books NOT founded: ", error)
+        res.status(200).json({message: "Internal Server Error"})
+    }
+}
+
+
+//CREAR USUARIOS
+export const postLibros = async (req,res) =>{
+    try {
+
+        const {titulo, autor, año, estado} = req.body
+        const [result] = await pool.query('INSERT INTO libros (titulo, autor, año, estado) VALUES (?,?,?,?)', [titulo, autor, año, estado]) 
+        console.log("Book created successfully", result)
+        res.status(201).json({message: "Book created successfully", id: result.insertId})
+        
+    } catch (error) {
+
+        console.log("Book NOT created: ", error)
+        res.status(500).json({Message: "Internal Server Error"})
+    } 
+}
+
+
+//ACTUALIZAR LIBROS
+export const putLibros = async (req , res) => {
+    try {
+
+        const {id} = req.params
+        const {titulo, autor, año, estado} = req.body
+        const [result] = await pool.query('UPDATE libros SET titulo=?, autor=?, año=?, estado=? WHERE id_libro=?', [titulo, autor, año, estado, id])
+
+        if(result.affectedRows === 0){
+
+            return res.status(404).json({message: "Book NOT founded with this ID"})
+
+        }
+
+        console.log("Book UPDATED succesfuly")
+        res.status(200).json({message: "Book UPDATED correctly"})
+
+
+    } catch (error) {
+
+        console.log("Book NOT UPDATED error: ", error)
+        res.status(500).json({message: "Internal Server Error", error})
+
+    }
+}
+
+
+//ELIMINAR LIBROS
+export const deleteLibros = async (req, res) => 
+{
+    try {
+        const {id} = req.params
+
+        const [result] = await pool.query('DELETE FROM libros WHERE id_libro=?', [id])
+
+        console.log("Book DELETED successfully: ", result)
+        res.status(200).json({message: "Book DELETED correctly"})
+        
+    } catch (error) {
+
+        console.log("Book NOT DELETED error: ", error)
+        res.status(500).json({message: "Internal Server Error"})
+
+    }
+
+}
+</file>
+
+<file path="src/controllers/prestamos_controller.js">
+import pool from "../server/data_base.js"
+
+
+//OBTENER prestamos
+export const getPrestamos = async (req,res) =>{
+    try {
+
+        const [rows] = await pool.query('SELECT * FROM prestamos ')
+        console.log("Loans founded successfully: ", rows)
+        res.status(200).json({message: "Success"})
+        
+    } catch (error) {
+
+        console.log("Loans NOT founded: ", error)
+        res.status(200).json({message: "Internal Server Error"})
+    }
+}
+
+
+//CREAR USUARIOS
+export const postPrestamos = async (req,res) =>{
+    try {
+
+        const {fecha_prestamo, fecha_devolucion, id_usuario} = req.body
+        const [result] = await pool.query('INSERT INTO prestamos (fecha_prestamo, fecha_devolucion, id_usuario) VALUES (?,?,?)', [fecha_prestamo, fecha_devolucion, id_usuario]) 
+        console.log("Loan created successfuly", result)
+        res.status(201).json({message: "User created "})
+        
+    } catch (error) {
+
+        console.log("User NOT created: ", error)
+        res.status(500).json({Message: "Internal Server Error"})
+    } 
+}
+
+
+//ACTUALIZAR USUARIOS
+export const putPrestamos = async (req , res) => {
+    try {
+        const {id} = req.params
+        const {fecha_prestamo, fecha_devolucion, id_usuario} = req.body
+        const [result] = await pool.query('UPDATE prestamos SET fecha_prestamo=?, fecha_devolucion=?, id_usuario=? WHERE id_prestamos=? ' , [fecha_prestamo, fecha_devolucion, id_usuario, id])
+
+        if(result.affectedRows === 0){
+
+            return res.status(404).json({message: "Loan NOT founded with this ID"})
+
+        }
+
+        console.log("Loan UPDATED succesfuly")
+        res.status(200).json({message: "Loan UPDATED correctly"})
+
+
+    } catch (error) {
+
+        console.log("Loan NOT UPDATED error: ", error)
+        res.status(500).json({message: "Internal Server Error", error})
+
+    }
+}
+
+
+//ELIMINAR USUARIOS
+export const deletePrestamos = async (req, res) => 
+{
+    try {
+        const id = req.params.id
+
+        const [result] = await pool.query('DELETE FROM prestamos WHERE id_prestamos=?', [id])
+
+        console.log("Loan DELETED successfully: ", result)
+        res.status(200).json({message: "Loan DELETED correctly"})
+        
+    } catch (error) {
+
+        console.log("Loan NOT DELETED error: ", error)
+        res.status(500).json({message: "Internal Server Error"})
+
+    }
+
+}
+</file>
+
+<file path="src/server/data_base.js">
+import mysql2 from "mysql2/promise"
+import dotenv from "dotenv"
+
+dotenv.config();
+const pool = mysql2.createPool({
+
+    host : process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    user: process.env.DB_USER,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+
+}); 
+
+pool.getConnection();
+
+async function connection_test(){
+    try {
+        const connection = await pool.getConnection();
+        console.log("MySQL connection enable")
+    } catch (error) {
+        console.log("MySQL connection Error: ", error)
+    }
+}
+
+export default pool
+</file>
+
+<file path=".gitignore">
+# Ignore node_modules, environment files, build directories, and other common files that should not be tracked by Git.
+**/node_modules
+
+# Ignore environment variable files
+**/.env 
+**/*.env
+#ignore build and distribution directories
+**/dist/
+**/build/
+
+# Ignore log files
+*.log
+
+# Ignore OS-specific files and IDE configurations
+.DS_Store
+.vscode/
+</file>
+
+<file path="rest_detalles.http">
+@host = http://localhost:5000
+
+###
+
+GET {{host}}/api/detalles
+###
+POST {{host}}/api/detalles
+Content-Type: application/json
+
+{
+    "nombre" : "Juan Gomez",
+    "correo": "Juancho@gmail.com",
+    "telefono": "3186788999"
+}
+###
+PUT {{host}}/api/detalles/1
+Content-Type: application/json
+
+{
+    "nombre" : "Juan Perez",
+    "correo": "JuanchoPerez@gmail.com",
+    "telefono": "3186788999"
+}
+
+###
+DELETE {{host}}/api/detalles/1
+</file>
+
+<file path="rest_libros.http">
+@host = http://localhost:5000
+
+###
+
+GET {{host}}/api/libros
+###
+POST {{host}}/api/libros
+Content-Type: application/json
+
+{
+    "nombre" : "Juan Gomez",
+    "correo": "Juancho@gmail.com",
+    "telefono": "3186788999"
+}
+###
+PUT {{host}}/api/libros/1
+Content-Type: application/json
+
+{
+    "nombre" : "Juan Perez",
+    "correo": "JuanchoPerez@gmail.com",
+    "telefono": "3186788999"
+}
+
+###
+DELETE {{host}}/api/libros/1
+</file>
+
+<file path="rest_prestamos.http">
+@host = http://localhost:5000
+
+###
+GET {{host}}/api/prestamos
+
+
+###
+POST {{host}}/api/prestamos
+Content-Type: application/json
+
+{
+    "fecha_prestamo" : "2026-10-21",
+    "fecha_devolucion": "2026-12-21",
+    "id_usuario": "15"    
+}
+
+###
+PUT {{host}}/api/prestamos/3
+Content-Type: application/json
+
+{
+    "fecha_prestamo" : "2024-10-21",
+    "fecha_devolucion": "2025-02-21",
+    "id_usuario": "17"
+}
+
+###
+DELETE {{host}}/api/prestamos/1
+</file>
+
+<file path="vite.config.js">
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4173',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+})
+</file>
+
+<file path="src/routes/detalles_prestamo.js">
+import express from "express"
+import * as detalles_controller from "../controllers/detalles_controller.js"
+
+
+const detallesRouter = express.Router();
+//GET sin ID 
+detallesRouter.get("/",  detalles_controller.getDetalles)
+
+
+//CREAR
+detallesRouter.post("/", detalles_controller.postDetalles)
+
+
+//ACTUALIZAR
+detallesRouter.put("/:id",  detalles_controller.putDetalles)
+
+
+//ELIMINAR 
+detallesRouter.delete("/:id", detalles_controller.deleteDetalles)
+
+export default detallesRouter
+</file>
+
+<file path="src/routes/libros.js">
+import express from "express"
+import * as libros_controller from "../controllers/libros_controller.js"
+
+
+const librosRouter = express.Router();
+//GET sin ID 
+librosRouter.get("/",  libros_controller.getLibros )
+
+
+//CREAR
+librosRouter.post("/", libros_controller.postLibros)
+
+
+//ACTUALIZAR
+librosRouter.put("/:id", libros_controller.putLibros)
+
+
+//ELIMINAR 
+
+librosRouter.delete("/:id",libros_controller.deleteLibros)
+
+
+export default librosRouter
+</file>
+
+<file path="src/routes/prestamos.js">
+import express from "express"
+import * as prestamos_controller from "../controllers/prestamos_controller.js" 
+
+
+const prestamosRouter = express.Router();
+//GET 
+prestamosRouter.get("/",  prestamos_controller.getPrestamos)
+
+//CREAR
+prestamosRouter.post("/", prestamos_controller.postPrestamos)
+
+//ACTUALIZAR
+prestamosRouter.put("/:id", prestamos_controller.putPrestamos)
+ 
+//ELIMINAR 
+prestamosRouter.delete("/:id", prestamos_controller.deletePrestamos)
+
+export default prestamosRouter
+</file>
+
+<file path="src/routes/usuario.js">
+import express from "express"
+import * as usuario_controller from "../controllers/usuarios_controller.js" 
+
+
+const usuarioRouter = express.Router();
+
+usuarioRouter.post("/", usuario_controller.postUsuarios)
+usuarioRouter.get("/", usuario_controller.getUsuarios)
+usuarioRouter.put("/:id", usuario_controller.putUsuario)
+usuarioRouter.delete("/:id",  usuario_controller.deleteUsuario)
+
+
+export default usuarioRouter
+</file>
+
+<file path="src/server/server.js">
+import express from "express"
+import dotenv from "dotenv"
+
+import usuarioRouter from "../routes/usuario.js"
+import librosRouter from "../routes/libros.js"
+import prestamosRouter from "../routes/prestamos.js"
+import detallesRouter from "../routes/detalles_prestamo.js"
+
+const app = express()
+dotenv.config()
+app.use(express.json())
+
+app.use("/api/usuarios", usuarioRouter)
+app.use("/api/libros", librosRouter)
+app.use("/api/prestamos", prestamosRouter)
+app.use("/api/detalles", detallesRouter)
+
+const PORT = process.env.PORT || 5000
+
+app.listen(PORT, () => {
+    console.log(`Server en http://localhost:${PORT}`)
+})
+
+export default app
+</file>
+
+<file path="package.json">
+{
+  "name": "biblioteca_el_ferry",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node --watch src/server/server.js",
+    "frontend": "vite frontend"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "@react-oauth/google": "^0.13.5",
+    "@vitejs/plugin-react": "^6.1.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3",
+    "mysql2": "^3.24.2",
+    "node-appwrite": "^29.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3",
+    "vite": "^8.2.2"
+  }
+}
+</file>
+
+<file path="src/controllers/usuarios_controller.js">
+import pool from "../server/data_base.js"
+import {generarToken} from "../Security/Oauth/token.js"
+
+
+//OBTENER  USUARIOS 
+export const getUsuarios = async (req,res) =>{
+    try {
+
+        const [rows] = await pool.query('SELECT * FROM usuarios')
+        console.log("Users founded successfully: ", rows)
+        res.status(200).json({message: "Success", users: rows})
+        
+    } catch (error) {
+
+        console.log("Users NOT founded: ", error)
+        res.status(500).json({message: "Internal Server Error"})
+    }
+    
+
+    };
+
+
+//CREAR USUARIOS
+export const postUsuarios = async (req,res) =>{
+    try {
+
+        const {nombre, correo, telefono, password} = req.body
+        const [result] = await pool.query('INSERT INTO usuarios (nombre, correo, telefono, password) VALUES (?, ?, ?, ?)', [nombre, correo, telefono, password])
+
+        const nuevoUsuario = {
+        id_usuario: result.insertId,
+        nombre,
+        correo,
+        telefono,
+        password
+    }
+
+    const token = generarToken(nuevoUsuario)
+    console.log("User created successfuly", result)
+        res.status(201).json({message: "User created ", token, user: nuevoUsuario})
+        
+    } catch (error) {
+
+        console.log("User NOT created: ", error)
+        res.status(500).json({Message: "Internal Server Error"})
+    } 
+}
+
+
+//ACTUALIZAR USUARIOS
+export const putUsuario = async (req , res) => {
+    try {
+        const {id} = req.params
+        const {nombre, correo, telefono, password} = req.body
+        const [result] = await pool.query('UPDATE usuarios SET nombre=?, correo=?, telefono=?, password=? WHERE id_usuario=?', [nombre, correo, telefono, password, id])
+
+        if(result.affectedRows === 0){
+
+            return res.status(404).json({message: "User NOT founded with this ID"})
+
+        }
+
+        console.log("User UPDATED succesfuly")
+        res.status(200).json({message: "User UPDATED correctly"})
+
+
+    } catch (error) {
+
+        console.log("User NOT UPDATED error: ", error)
+        res.status(500).json({message: "Internal Server Error", error})
+
+    }
+}
+
+
+//ELIMINAR USUARIOS
+export const deleteUsuario = async (req, res) => 
+{
+    try {
+        const {id} = req.params
+
+        const [result] = await pool.query('DELETE FROM usuarios WHERE id_usuario=?', [id])
+
+        console.log("User DELETED successfully: ", result)
+        res.status(200).json({message: "DELETED correctly"})
+        
+    } catch (error) {
+
+        console.log("User NOT DELETED error: ", error)
+        res.status(500).json({message: "Internal Server Error"})
+
+    }
+
+}
+</file>
+
+<file path="rest_usuarios.http">
+@host = http://localhost:5000
+###
+GET {{host}}/api/usuarios
+
+
+###
+POST {{host}}/api/usuarios
+Content-Type: application/json
+
+{
+    "nombre" : "Maria Padilla Bedoya",   
+    "correo": "MariPadilla@gmail.com",
+    "telefono": "3165436341",
+    "password": "260608"
+}
+
+
+###
+PUT {{host}}/api/usuarios/8
+Content-Type: application/json
+
+{
+    "nombre" : "Juan Gomez Ibarra",
+    "correo": "JuanchitoIbarra@gmail.com",
+    "telefono": "3186778990",
+    "password": "310295"
+}
+
+###
+DELETE {{host}}/api/usuarios/8
+</file>
+
+</files>

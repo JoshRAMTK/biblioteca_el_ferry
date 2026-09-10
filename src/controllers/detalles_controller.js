@@ -1,19 +1,38 @@
 import pool from "../server/data_base.js"
 
-//OBTENER DETALLES
-export const getDetalles = async (req,res) =>{
+import pool from "../server/data_base.js";
+
+// OBTENER DETALLES
+export const getDetalles = async (req, res) => {
     try {
-
-        const [rows] = await pool.query('SELECT * FROM detalles')
-        console.log("Details founded successfully: ", rows)
-        res.status(200).json({message: "Success"})
-        
+        const [rows] = await pool.query('SELECT * FROM detalles');
+        res.status(200).json(rows); // <-- Retorna los datos
     } catch (error) {
-
-        console.log("Details NOT founded: ", error)
-        res.status(200).json({message: "Internal Server Error"})
+        console.log("Details NOT found: ", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
+
+// ACTUALIZAR DETALLES
+export const putDetalles = async (req, res) => {
+    try {
+        const { id } = req.params; // <-- Corregido (antes decia req.params.id)
+        const { id_usuario, id_libro, descripcion } = req.body;
+        const [result] = await pool.query(
+            'UPDATE detalles SET id_usuario=?, id_libro=?, descripcion=? WHERE id_detalle=?', 
+            [id_usuario, id_libro, descripcion, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Detail NOT found with this ID" });
+        }
+
+        res.status(200).json({ message: "Details UPDATED correctly" });
+    } catch (error) {
+        console.log("Details NOT UPDATED error: ", error);
+        res.status(500).json({ message: "Internal Server Error", error });
+    }
+};
 
 
 //CREAR DETALLES        
@@ -31,34 +50,6 @@ export const postDetalles = async (req,res) =>{
         res.status(500).json({Message: "Internal Server Error"})
     } 
 }
-
-
-//ACTUALIZAR DETALLES
-export const putDetalles = async (req , res) => {
-    try {
-
-        const {id} = req.params.id
-        const {id_usuario, id_libro, descripcion} = req.body
-        const [result] = await pool.query('UPDATE detalles SET id_usuario=?, id_libro=?, descripcion=? WHERE id_detalle=?', [id_usuario, id_libro, descripcion, id])
-
-        if(result.affectedRows === 0){
-
-            return res.status(404).json({message: "User NOT founded with this ID"})
-
-        }
-
-        console.log("Details UPDATED succesfuly")
-        res.status(200).json({message: "Details UPDATED correctly"})
-
-
-    } catch (error) {
-
-        console.log("Details NOT UPDATED error: ", error)
-        res.status(500).json({message: "Internal Server Error", error})
-
-    }
-}
-
 
 //ELIMINAR DETALLES
 export const deleteDetalles = async (req, res) => 

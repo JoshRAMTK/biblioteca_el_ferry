@@ -1,81 +1,65 @@
-import pool from "../server/data_base.js"
+import pool from "../server/data_base.js";
 
-
-//OBTENER prestamos
-export const getPrestamos = async (req,res) =>{
+// OBTENER PRESTAMOS
+export const getPrestamos = async (req, res) => {
     try {
-
-        const [rows] = await pool.query('SELECT * FROM prestamos ')
-        console.log("Loans founded successfully: ", rows)
-        res.status(200).json({message: "Success"})
-        
+        const [rows] = await pool.query('SELECT * FROM prestamos');
+        res.status(200).json(rows);
     } catch (error) {
-
-        console.log("Loans NOT founded: ", error)
-        res.status(200).json({message: "Internal Server Error"})
+        console.log("Loans NOT found: ", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
 
-
-//CREAR USUARIOS
-export const postPrestamos = async (req,res) =>{
+// CREAR PRESTAMO
+export const postPrestamos = async (req, res) => {
     try {
-
-        const {fecha_prestamo, fecha_devolucion, id_usuario} = req.body
-        const [result] = await pool.query('INSERT INTO prestamos (fecha_prestamo, fecha_devolucion, id_usuario) VALUES (?,?,?)', [fecha_prestamo, fecha_devolucion, id_usuario]) 
-        console.log("Loan created successfuly", result)
-        res.status(201).json({message: "User created "})
-        
+        // Incluimos id_libro que está en tu tabla como NOT NULL
+        const { id_usuario, id_libro, fecha_prestamo, fecha_devolucion } = req.body;
+        const [result] = await pool.query(
+            'INSERT INTO prestamos (id_usuario, id_libro, fecha_prestamo, fecha_devolucion) VALUES (?,?,?,?)', 
+            [id_usuario, id_libro, fecha_prestamo, fecha_devolucion]
+        ); 
+        res.status(201).json({ message: "Loan created successfully", id: result.insertId });
     } catch (error) {
-
-        console.log("User NOT created: ", error)
-        res.status(500).json({Message: "Internal Server Error"})
+        console.log("Loan NOT created: ", error);
+        res.status(500).json({ message: "Internal Server Error" });
     } 
-}
+};
 
-
-//ACTUALIZAR USUARIOS
-export const putPrestamos = async (req , res) => {
+// ACTUALIZAR PRESTAMO
+export const putPrestamos = async (req, res) => {
     try {
-        const {id} = req.params
-        const {fecha_prestamo, fecha_devolucion, id_usuario} = req.body
-        const [result] = await pool.query('UPDATE prestamos SET fecha_prestamo=?, fecha_devolucion=?, id_usuario=? WHERE id_prestamos=? ' , [fecha_prestamo, fecha_devolucion, id_usuario, id])
+        const { id } = req.params;
+        const { id_usuario, id_libro, fecha_prestamo, fecha_devolucion } = req.body;
+        
+        // Cambiado id_prestamos a id_prestamo (singular)
+        const [result] = await pool.query(
+            'UPDATE prestamos SET id_usuario=?, id_libro=?, fecha_prestamo=?, fecha_devolucion=? WHERE id_prestamo=?', 
+            [id_usuario, id_libro, fecha_prestamo, fecha_devolucion, id]
+        );
 
-        if(result.affectedRows === 0){
-
-            return res.status(404).json({message: "Loan NOT founded with this ID"})
-
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Loan NOT found with this ID" });
         }
 
-        console.log("Loan UPDATED succesfuly")
-        res.status(200).json({message: "Loan UPDATED correctly"})
-
-
+        res.status(200).json({ message: "Loan UPDATED correctly" });
     } catch (error) {
-
-        console.log("Loan NOT UPDATED error: ", error)
-        res.status(500).json({message: "Internal Server Error", error})
-
+        console.log("Loan NOT UPDATED error: ", error);
+        res.status(500).json({ message: "Internal Server Error", error });
     }
-}
+};
 
-
-//ELIMINAR USUARIOS
-export const deletePrestamos = async (req, res) => 
-{
+// ELIMINAR PRESTAMO
+export const deletePrestamos = async (req, res) => {
     try {
-        const id = req.params.id
+        const { id } = req.params;
+        // Cambiado id_prestamos a id_prestamo (singular)
+        const [result] = await pool.query('DELETE FROM prestamos WHERE id_prestamo=?', [id]);
 
-        const [result] = await pool.query('DELETE FROM prestamos WHERE id_prestamos=?', [id])
-
-        console.log("Loan DELETED successfully: ", result)
-        res.status(200).json({message: "Loan DELETED correctly"})
-        
+        res.status(200).json({ message: "Loan DELETED correctly" });
     } catch (error) {
-
-        console.log("Loan NOT DELETED error: ", error)
-        res.status(500).json({message: "Internal Server Error"})
-
+        console.log("Loan NOT DELETED error: ", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
-
-}
+};

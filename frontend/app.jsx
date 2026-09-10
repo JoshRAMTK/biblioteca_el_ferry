@@ -1,37 +1,38 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Login } from './pages/Login';
-import { Libros } from './pages/Libros';
-import { Prestamos } from './pages/Prestamos';
-import { DetallesPrestamo } from './pages/DetallesPrestamo';
-import { ProtectedRoute } from './components/ProtectedRoute';
 
+// Importaciones de componentes
+import { Login } from './src/login.jsx';
+import { Libros } from './src/libros.jsx';
+import { Prestamos } from './src/prestamos.jsx';
+import detalles from './src/detalles.jsx';
+import { ProtectedRoute } from './src/components/protectedRoute.jsx';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-    <App />
-  </GoogleOAuthProvider>
-);
-
+// Carga de variable de entorno
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Rutas Públicas */}
-        <Route path="/login" element={<Login />} />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || ""}>
+      <BrowserRouter>
+        <Routes>
+          {/* Rutas Públicas */}
+          <Route path="/login" element={<Login />} />
 
-        {/* Rutas Protegidas (Solo accesibles con JWT) */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/libros" element={<Libros />} />
-          <Route path="/prestamos" element={<Prestamos />} />
-          <Route path="/detalles" element={<DetallesPrestamo />} />
-        </Route>
+          {/* Rutas Protegidas */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/libros" element={React.createElement(Libros)} />
+            <Route path="/prestamos" element={<Prestamos />} />
+            <Route path="/detalles" element={React.createElement(detalles)} />
+          </Route>
 
-        {/* Redirección por defecto */}
-        <Route path="*" element={<Navigate to="/libros" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Redirección por defecto */}
+          <Route path="*" element={<Navigate to="/libros" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 
 import pool from "../server/data_base.js"
-import {generarToken} from "../Security/Oauth/token.js"
+import {generarToken} from "../Security/token.js"
 
 
 //OBTENER  USUARIOS 

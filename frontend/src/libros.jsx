@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../api/client';
+import { apiFetch } from '../../src/api/client';
 
 export function Libros() {
   const [libros, setLibros] = useState([]);

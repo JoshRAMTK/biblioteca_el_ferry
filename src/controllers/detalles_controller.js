@@ -1,7 +1,5 @@
 import pool from "../server/data_base.js"
 
-import pool from "../server/data_base.js";
-
 // OBTENER DETALLES
 export const getDetalles = async (req, res) => {
     try {

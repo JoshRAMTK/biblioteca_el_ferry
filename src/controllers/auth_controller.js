@@ -1,7 +1,7 @@
 // controllers/authController.js
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import pool from '../db.js'; // Ajusta la ruta a tu conexión MySQL
+import pool from '../server/data_base.js'; // Ajusta la ruta a tu conexión MySQL
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 

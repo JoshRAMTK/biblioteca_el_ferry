@@ -5,13 +5,13 @@ import usuarioRouter from "../routes/usuario.js";
 import librosRouter from "../routes/libros.js";
 import prestamosRouter from "../routes/prestamos.js";
 import detallesRouter from "../routes/detalles_prestamo.js";
-import authRouter from "../routes/auth.js"; // <-- Agregado
+import authRouter from "../routes/auth.js"; 
 
 const app = express();
 dotenv.config();
 app.use(express.json());
 
-app.use("/api/auth", authRouter); // <-- Agregado
+app.use("/api/auth", authRouter); 
 app.use("/api/usuarios", usuarioRouter);
 app.use("/api/libros", librosRouter);
 app.use("/api/prestamos", prestamosRouter);

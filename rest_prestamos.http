@@ -1,0 +1,28 @@
+@host = http://localhost:5000
+
+###
+GET {{host}}/api/prestamos
+
+
+###
+POST {{host}}/api/prestamos
+Content-Type: application/json
+
+{
+    "fecha_prestamo" : "2026-10-21",
+    "fecha_devolucion": "2026-12-21",
+    "id_usuario": "15"    
+}
+
+###
+PUT {{host}}/api/prestamos/3
+Content-Type: application/json
+
+{
+    "fecha_prestamo" : "2024-10-21",
+    "fecha_devolucion": "2025-02-21",
+    "id_usuario": "17"
+}
+
+###
+DELETE {{host}}/api/prestamos/1
